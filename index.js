@@ -11,7 +11,7 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const app = express();
-const PORT = 3001;
+const { Server } = require('socket.io');
 const Order = require('./Order');
 
 const allowedOrigins = [
@@ -420,6 +420,6 @@ const invalidateProductCache = () => {
   Object.keys(cache).forEach(key => delete cache[key]);
 };
 
-server.listen(3001, () => {
-  console.log('Servidor escuchando en el puerto 3001');
+server.listen(process.env.PORT, () => {
+  console.log('Servidor escuchando en el puerto', process.env.PORT);
 });
