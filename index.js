@@ -11,21 +11,16 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const app = express();
+const PORT = 3001;
 const Order = require('./Order');
-const PORT = process.env.PORT || 3001;
-
-const allowedOrigins = [
-  'https://frontend-dsaw.vercel.app',
-  'https://frontend-dsaw-*.vercel.app'
-];
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: 'http://localhost:5173', // Permitir solicitudes desde el frontend
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
-  transports: ['websocket'],
+  transports: ['websocket'], // Forzar el uso de WebSockets
 });
 
 io.on('connection', (socket) => {
@@ -39,11 +34,7 @@ io.on('connection', (socket) => {
 const resetTokens = {}; // Almacén temporal para tokens de restablecimiento
 
 app.use(express.json());
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true,
-}));
+app.use(cors());
 
 const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
 
@@ -52,10 +43,7 @@ const getUsersFile = (email) => {
 };
 
 // Conexión a la base de datos MongoDB
-mongoose.connect('mongodb://localhost:27017/inventoryDB', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose.connect(process.env.MONGODB_URI);
 
 const productSchema = new mongoose.Schema({
   name: String,
@@ -420,6 +408,6 @@ const invalidateProductCache = () => {
   Object.keys(cache).forEach(key => delete cache[key]);
 };
 
-server.listen(process.env.PORT, () => {
-  console.log('Servidor escuchando en el puerto', process.env.PORT);
+server.listen(3001, () => {
+  console.log('Servidor escuchando en el puerto 3001');
 });
