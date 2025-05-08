@@ -314,6 +314,8 @@ app.get('/products', async (req, res) => {
   const { name, category } = req.query;
   const cacheKey = `${name || ''}-${category || ''}`;
 
+  console.log('Recibida solicitud para /products con parámetros:', { name, category });
+
   // Verificar si los datos están en la caché
   if (cache[cacheKey]) {
     console.log('Datos obtenidos de la caché');
@@ -330,8 +332,12 @@ app.get('/products', async (req, res) => {
       filter.category = category;
     }
 
+    console.log('Filtro construido:', filter);
+
     // Consultar la base de datos con el filtro
     const products = await Product.find(filter);
+
+    console.log('Productos obtenidos de la base de datos:', products);
 
     // Almacenar los datos en la caché
     cache[cacheKey] = products;
