@@ -42,8 +42,13 @@ const getUsersFile = (email) => {
   return email.endsWith('@unisabana.edu.co') ? './clientes.json' : './pos.json';
 };
 
-// Conexión a la base de datos MongoDB
-mongoose.connect(process.env.MONGODB_URI);
+// Conexión a MongoDB Atlas
+mongoose.connect('mongodb+srv://alejandrorivsob:tS6OnQ6IMl1J4xt9@alejo18.znsakxl.mongodb.net/inventoryDB?retryWrites=true&w=majority', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
+  .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
 
 const productSchema = new mongoose.Schema({
   name: String,
