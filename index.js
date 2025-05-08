@@ -11,8 +11,8 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const app = express();
-const { Server } = require('socket.io');
 const Order = require('./Order');
+const PORT = process.env.PORT || 3001;
 
 const allowedOrigins = [
   'https://frontend-dsaw.vercel.app',
