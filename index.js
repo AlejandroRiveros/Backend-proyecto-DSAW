@@ -43,12 +43,15 @@ const getUsersFile = (email) => {
 };
 
 // Conexión a MongoDB Atlas
-mongoose.connect('mongodb+srv://alejandrorivsob:tS6OnQ6IMl1J4xt9@alejo18.znsakxl.mongodb.net/inventoryDB?retryWrites=true&w=majority', {
+mongoose.connect('mongodb+srv://alejandrorivsob:tS6OnQ6IMl1J4xt9@alejo18.znsakxl.mongodb.net/InventoryDB?retryWrites=true&w=majority', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000, // Aumentar el tiempo de espera a 30 segundos
 })
   .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
   .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
+
+mongoose.set('strictQuery', false); // Desactivar strictQuery para evitar problemas con consultas
 
 const productSchema = new mongoose.Schema({
   name: String,
@@ -310,6 +313,7 @@ app.get('/test-insert', async (req, res) => {
 // Implementar una caché en memoria para el endpoint /products
 const cache = {};
 
+// Actualizar el endpoint /products para manejar mejor los errores y devolver datos
 app.get('/products', async (req, res) => {
   const { name, category } = req.query;
   const cacheKey = `${name || ''}-${category || ''}`;
@@ -336,6 +340,11 @@ app.get('/products', async (req, res) => {
 
     // Consultar la base de datos con el filtro
     const products = await Product.find(filter);
+
+    if (!products || products.length === 0) {
+      console.log('No se encontraron productos');
+      return res.status(404).json({ message: 'No se encontraron productos' });
+    }
 
     console.log('Productos obtenidos de la base de datos:', products);
 
