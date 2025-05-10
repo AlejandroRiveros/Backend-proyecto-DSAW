@@ -223,7 +223,7 @@ app.get('/inventory/:id', async (req, res) => {
     }
     res.json(product);
   } catch (error) {
-    res.status(500).send('Error al obtener el producto.');
+    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
   }
 });
 
@@ -239,7 +239,7 @@ app.post('/inventory', upload.single('image'), async (req, res) => {
     res.status(201).json(savedProduct);
   } catch (error) {
     console.error('Error al guardar el producto:', error);
-    res.status(500).send('Error al guardar el producto.');
+    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
   }
 });
 
@@ -306,7 +306,7 @@ app.get('/test-insert', async (req, res) => {
     res.json({ message: 'Producto de prueba insertado correctamente', product: savedProduct });
   } catch (error) {
     console.error('Error al insertar el producto de prueba:', error);
-    res.status(500).send('Error al insertar el producto de prueba.');
+    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
   }
 });
 
@@ -354,7 +354,7 @@ app.get('/products', async (req, res) => {
     res.json(products);
   } catch (error) {
     console.error('Error al filtrar productos:', error);
-    res.status(500).json({ error: 'Error al filtrar productos' });
+    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
   }
 });
 
@@ -393,7 +393,7 @@ app.post('/orders', async (req, res) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    res.status(500).json({ error: 'Error al crear el pedido' });
+    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
   }
 });
 
@@ -403,7 +403,7 @@ app.get('/orders', async (req, res) => {
     const orders = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ error: 'Error al obtener los pedidos' });
+    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
   }
 });
 
@@ -419,7 +419,7 @@ app.put('/orders/:id', async (req, res) => {
     // Aquí podrías emitir un evento con socket.io para notificar al cliente
     res.json(order);
   } catch (error) {
-    res.status(500).json({ error: 'Error al actualizar el pedido' });
+    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
   }
 });
 
