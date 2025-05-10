@@ -423,6 +423,49 @@ app.put('/orders/:id', async (req, res) => {
   }
 });
 
+app.put('/orders/:id/cancel', async (req, res) => {
+  const { id } = req.params;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const order = await Order.findById(id).session(session);
+
+    if (!order) {
+      await session.abortTransaction();
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+
+    if (order.status === 'cancelado') {
+      await session.abortTransaction();
+      return res.status(400).json({ error: 'El pedido ya está cancelado' });
+    }
+
+    // Revertir el stock de los productos
+    for (const item of order.products) {
+      const product = await Product.findById(item.productId).session(session);
+      if (product) {
+        product.stock += item.quantity;
+        await product.save({ session });
+      }
+    }
+
+    // Actualizar el estado del pedido a cancelado
+    order.status = 'cancelado';
+    await order.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({ message: 'Pedido cancelado y stock revertido correctamente', order });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error al cancelar el pedido:', error);
+    res.status(500).json({ error: 'Error interno del servidor al cancelar el pedido' });
+  }
+});
+
 // --- Invalidar caché después de cambios en productos ---
 const invalidateProductCache = () => {
   Object.keys(cache).forEach(key => delete cache[key]);
