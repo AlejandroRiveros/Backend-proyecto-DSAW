@@ -35,6 +35,7 @@ try {
     !process.env.FIREBASE_PRIVATE_KEY
   ) {
     throw new Error('⚠️ Variables de entorno de Firebase incompletas');
+    
   }
   console.log("✅ VERIFICANDO VARIABLES DE ENTORNO:");
   console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID);
