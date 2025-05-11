@@ -428,6 +428,49 @@ const invalidateProductCache = () => {
   Object.keys(cache).forEach(key => delete cache[key]);
 };
 
+app.post('/inventory/validate-stock', async (req, res) => {
+  const { products } = req.body;
+
+  if (!products || !Array.isArray(products)) {
+    return res.status(400).json({ error: 'Formato de datos inválido. Se esperaba un array de productos.' });
+  }
+
+  try {
+    const validationResults = [];
+
+    for (const product of products) {
+      const dbProduct = await Product.findById(product.productId);
+
+      if (!dbProduct) {
+        validationResults.push({ productId: product.productId, valid: false, message: 'Producto no encontrado.' });
+        continue;
+      }
+
+      if (dbProduct.stock < product.quantity) {
+        validationResults.push({
+          productId: product.productId,
+          valid: false,
+          message: `Stock insuficiente. Disponible: ${dbProduct.stock, solicitado: ${product.quantity}.`,
+        });
+        continue;
+      }
+
+      validationResults.push({ productId: product.productId, valid: true });
+    }
+
+    const invalidResults = validationResults.filter((result) => !result.valid);
+
+    if (invalidResults.length > 0) {
+      return res.status(400).json({ error: 'Validación de stock fallida.', details: invalidResults });
+    }
+
+    res.json({ message: 'Stock validado correctamente.' });
+  } catch (error) {
+    console.error('Error al validar el stock:', error);
+    res.status(500).json({ error: 'Error interno del servidor al validar el stock.' });
+  }
+});
+
 server.listen(3001, () => {
   console.log('Servidor escuchando en el puerto 3001');
 });
