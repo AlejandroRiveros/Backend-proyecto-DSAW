@@ -450,7 +450,7 @@ app.post('/inventory/validate-stock', async (req, res) => {
         validationResults.push({
           productId: product.productId,
           valid: false,
-          message: `Stock insuficiente. Disponible: ${dbProduct.stock, solicitado: ${product.quantity}.`,
+          message: `Stock insuficiente. Disponible: ${dbProduct.stock}, solicitado: ${product.quantity}.`,
         });
         continue;
       }
