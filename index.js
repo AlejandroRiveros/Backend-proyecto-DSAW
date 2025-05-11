@@ -33,13 +33,14 @@ try {
     throw new Error('FIREBASE_CREDENTIALS no está definido en las variables de entorno');
   }
 
-  const serviceAccount = JSON.parse(
-    Buffer.from(process.env.FIREBASE_CREDENTIALS, 'base64').toString('utf8')
-  );
-
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    }),
   });
+  
 } catch (error) {
   console.error('Error al inicializar Firebase Admin:', error);
   process.exit(1);
