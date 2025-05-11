@@ -229,11 +229,11 @@ app.get('/inventory/:id', async (req, res) => {
 
 // Ruta para agregar un producto con imagen
 app.post('/inventory', upload.single('image'), async (req, res) => {
-  const { name, price, stock, category } = req.body;
+  const { name, price, stock, category, restaurant } = req.body;
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
 
   try {
-    const newProduct = new Product({ name, price, stock, category, image: imageUrl });
+    const newProduct = new Product({ name, price, stock, category, restaurant, image: imageUrl });
     const savedProduct = await newProduct.save();
     invalidateProductCache();
     res.status(201).json(savedProduct);
