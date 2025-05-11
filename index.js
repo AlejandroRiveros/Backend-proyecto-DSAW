@@ -36,7 +36,12 @@ try {
   ) {
     throw new Error('⚠️ Variables de entorno de Firebase incompletas');
   }
-
+  console.log("✅ VERIFICANDO VARIABLES DE ENTORNO:");
+  console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID);
+  console.log("FIREBASE_CLIENT_EMAIL:", process.env.FIREBASE_CLIENT_EMAIL);
+  console.log("FIREBASE_PRIVATE_KEY está definida:", Boolean(process.env.FIREBASE_PRIVATE_KEY));
+  console.log("FIREBASE_PRIVATE_KEY longitud:", process.env.FIREBASE_PRIVATE_KEY?.length);
+  
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
