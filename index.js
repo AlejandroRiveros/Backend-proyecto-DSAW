@@ -205,10 +205,29 @@ app.post('/reset-password', async (req, res) => {
 });
 
 // Rutas para la gestión de inventarios
+const inventoryCache = {};
+
 app.get('/inventory', async (req, res) => {
-  const products = await Product.find();
-  res.json(products);
+  const cacheKey = 'inventory';
+
+  if (inventoryCache[cacheKey]) {
+    console.log('Datos obtenidos de la caché');
+    return res.json(inventoryCache[cacheKey]);
+  }
+
+  try {
+    const products = await Product.find();
+    inventoryCache[cacheKey] = products;
+    res.json(products);
+  } catch (error) {
+    console.error('Error al obtener el inventario:', error);
+    res.status(500).json({ error: 'Error al obtener el inventario' });
+  }
 });
+
+const invalidateInventoryCache = () => {
+  delete inventoryCache['inventory'];
+};
 
 // Ruta para obtener un producto específico por ID
 app.get('/inventory/:id', async (req, res) => {
@@ -236,7 +255,7 @@ app.post('/inventory', upload.single('image'), async (req, res) => {
   try {
     const newProduct = new Product({ name, price, stock, category, restaurant, image: imageUrl });
     const savedProduct = await newProduct.save();
-    invalidateProductCache();
+    invalidateInventoryCache();
     res.status(201).json(savedProduct);
   } catch (error) {
     console.error('Error al guardar el producto:', error);
@@ -263,7 +282,7 @@ app.put('/inventory/:id', async (req, res) => {
     return res.status(404).send('Producto no encontrado.');
   }
 
-  invalidateProductCache();
+  invalidateInventoryCache();
   io.emit('product-updated', updatedProduct);
   res.status(200).send('Producto actualizado');
 });
@@ -271,7 +290,7 @@ app.put('/inventory/:id', async (req, res) => {
 app.delete('/inventory/:id', async (req, res) => {
   const { id } = req.params;
   await Product.findByIdAndDelete(id);
-  invalidateProductCache();
+  invalidateInventoryCache();
   res.send('Producto eliminado exitosamente.');
 });
 
