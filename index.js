@@ -10,9 +10,35 @@ const multer = require('multer');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
+const admin = require('firebase-admin');
 const app = express();
 const PORT = 3001;
 const Order = require('./Order');
+
+const serviceAccount = require('./config/firebase-service-account.json');
+
+
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+const sendNotification = async (token, title, body) => {
+  const message = {
+    notification: {
+      title,
+      body,
+    },
+    token,
+  };
+
+  try {
+    const response = await admin.messaging().send(message);
+    console.log('Notificación enviada:', response);
+  } catch (error) {
+    console.error('Error al enviar la notificación:', error);
+  }
+};
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -410,16 +436,21 @@ app.get('/orders', async (req, res) => {
 // Actualizar el estado de un pedido
 app.put('/orders/:id', async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, token } = req.body;
+
   try {
     const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
     if (!order) {
       return res.status(404).json({ error: 'Pedido no encontrado' });
     }
-    // Aquí podrías emitir un evento con socket.io para notificar al cliente
+
+    if (token) {
+      await sendNotification(token, 'Estado del pedido actualizado', `Tu pedido ahora está: ${status}`);
+    }
+
     res.json(order);
   } catch (error) {
-    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
+    res.status(500).json({ error: 'Error al actualizar el pedido' });
   }
 });
 
