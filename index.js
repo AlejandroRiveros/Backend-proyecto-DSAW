@@ -15,9 +15,9 @@ const app = express();
 const PORT = 3001;
 const Order = require('./Order');
 
-const serviceAccount = require('./config/firebase-service-account.json');
-
-
+const serviceAccount = JSON.parse(
+  Buffer.from(process.env.FIREBASE_CREDENTIALS, 'base64').toString('utf8')
+);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
