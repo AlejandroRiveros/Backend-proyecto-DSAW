@@ -12,16 +12,38 @@ const http = require('http');
 const { Server } = require('socket.io');
 const admin = require('firebase-admin');
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
-const serviceAccount = JSON.parse(
-  Buffer.from(process.env.FIREBASE_CREDENTIALS, 'base64').toString('utf8')
-);
+// Verificar variables de entorno necesarias
+if (!process.env.JWT_SECRET || !process.env.JWT_EXPIRES_IN) {
+  console.error('Error: JWT_SECRET y JWT_EXPIRES_IN deben estar definidos en el archivo .env');
+  process.exit(1);
+}
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+// Verificar y crear directorio de uploads si no existe
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Inicialización de Firebase Admin
+try {
+  if (!process.env.FIREBASE_CREDENTIALS) {
+    throw new Error('FIREBASE_CREDENTIALS no está definido en las variables de entorno');
+  }
+
+  const serviceAccount = JSON.parse(
+    Buffer.from(process.env.FIREBASE_CREDENTIALS, 'base64').toString('utf8')
+  );
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+} catch (error) {
+  console.error('Error al inicializar Firebase Admin:', error);
+  process.exit(1);
+}
 
 const sendNotification = async (token, title, body) => {
   const message = {
@@ -68,14 +90,17 @@ const getUsersFile = (email) => {
   return email.endsWith('@unisabana.edu.co') ? './clientes.json' : './pos.json';
 };
 
-// Conexión a MongoDB Atlas
-mongoose.connect('mongodb+srv://alejandrorivsob:tS6OnQ6IMl1J4xt9@alejo18.znsakxl.mongodb.net/InventoryDB?retryWrites=true&w=majority', {
+// Conexión a MongoDB Atlas con mejor manejo de errores
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://alejandrorivsob:tS6OnQ6IMl1J4xt9@alejo18.znsakxl.mongodb.net/InventoryDB?retryWrites=true&w=majority', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Aumentar el tiempo de espera a 30 segundos
+  serverSelectionTimeoutMS: 30000,
 })
   .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
-  .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
+  .catch((error) => {
+    console.error('Error al conectar a MongoDB Atlas:', error);
+    process.exit(1);
+  });
 
 mongoose.set('strictQuery', false); // Desactivar strictQuery para evitar problemas con consultas
 
@@ -110,14 +135,28 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 
 // Middleware para verificar JWT
 function verifyToken(req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(403).send('Token no proporcionado.');
+  try {
+    const token = req.headers['authorization'];
+    if (!token) {
+      return res.status(403).json({ error: 'Token no proporcionado.' });
+    }
 
-  jwt.verify(token.split(' ')[1], process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(401).send('Token inválido.');
-    req.user = decoded;
-    next();
-  });
+    const tokenParts = token.split(' ');
+    if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
+      return res.status(401).json({ error: 'Formato de token inválido.' });
+    }
+
+    jwt.verify(tokenParts[1], process.env.JWT_SECRET, (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ error: 'Token inválido o expirado.' });
+      }
+      req.user = decoded;
+      next();
+    });
+  } catch (error) {
+    console.error('Error en verifyToken:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
 }
 
 // Middleware para verificar roles
@@ -132,27 +171,46 @@ function verifyRole(role) {
 
 // Ruta para registrar usuarios
 app.post('/register', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).send('Faltan datos.');
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Faltan datos requeridos.' });
+    }
 
-  if (!allowedDomains.some(domain => email.endsWith(`@${domain}`)) || email.endsWith('@possabana.com')) {
-    return res.status(400).send('Solo se permiten correos de dominios autorizados, excepto POS.');
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Formato de correo electrónico inválido.' });
+    }
+
+    if (!allowedDomains.some(domain => email.endsWith(`@${domain}`)) || email.endsWith('@possabana.com')) {
+      return res.status(400).json({ error: 'Solo se permiten correos de dominios autorizados, excepto POS.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const role = email.endsWith('@unisabana.edu.co') ? 'Cliente' : 'POS';
+    const filePath = role === 'Cliente' ? './clientes.json' : './pos.json';
+
+    // Asegurarse de que el archivo existe
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, JSON.stringify([]));
+    }
+
+    const users = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+
+    if (users.find(user => user.email === email)) {
+      return res.status(400).json({ error: 'El usuario ya existe.' });
+    }
+
+    users.push({ email, password: hashedPassword });
+    fs.writeFileSync(filePath, JSON.stringify(users, null, 2));
+
+    res.status(201).json({ message: 'Usuario registrado exitosamente.' });
+  } catch (error) {
+    console.error('Error en registro:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
   }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const role = email.endsWith('@unisabana.edu.co') ? 'Cliente' : 'POS';
-  const filePath = role === 'Cliente' ? './clientes.json' : './pos.json';
-
-  const users = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf-8')) : [];
-
-  if (users.find(user => user.email === email)) {
-    return res.status(400).send('El usuario ya existe.');
-  }
-
-  users.push({ email, password: hashedPassword });
-  fs.writeFileSync(filePath, JSON.stringify(users, null, 2)); // Formato legible con 2 espacios
-
-  res.status(201).send('Usuario registrado exitosamente.');
 });
 
 // Ruta para iniciar sesión
@@ -341,70 +399,65 @@ const cache = {};
 
 // Actualizar el endpoint /products para manejar mejor los errores y devolver datos
 app.get('/products', async (req, res) => {
-  const { name, category } = req.query;
-  const cacheKey = `${name || ''}-${category || ''}`;
-
-  console.log('Recibida solicitud para /products con parámetros:', { name, category });
-
-  // Verificar si los datos están en la caché
-  if (cache[cacheKey]) {
-    console.log('Datos obtenidos de la caché');
-    return res.json(cache[cacheKey]);
-  }
-
   try {
-    // Construir el filtro dinámico
+    const { name, category } = req.query;
+    const cacheKey = `${name || ''}-${category || ''}`;
+
+    if (cache[cacheKey]) {
+      return res.json(cache[cacheKey]);
+    }
+
     const filter = {};
     if (name) {
-      filter.name = { $regex: name, $options: 'i' }; // Búsqueda insensible a mayúsculas
+      filter.name = { $regex: name, $options: 'i' };
     }
     if (category) {
       filter.category = category;
     }
 
-    console.log('Filtro construido:', filter);
-
-    // Consultar la base de datos con el filtro
     const products = await Product.find(filter);
 
     if (!products || products.length === 0) {
-      console.log('No se encontraron productos');
       return res.status(404).json({ message: 'No se encontraron productos' });
     }
 
-    console.log('Productos obtenidos de la base de datos:', products);
-
-    // Almacenar los datos en la caché
     cache[cacheKey] = products;
-
     res.json(products);
   } catch (error) {
-    console.error('Error al filtrar productos:', error);
-    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
+    console.error('Error al obtener productos:', error);
+    res.status(500).json({ error: 'Error interno del servidor al obtener productos.' });
   }
 });
 
 // Ruta para crear un pedido y actualizar stock
 app.post('/orders', async (req, res) => {
-  const { products } = req.body;
-
-  // 1. Verificar disponibilidad y actualizar stock
   const session = await mongoose.startSession();
   session.startTransaction();
+
   try {
+    const { products } = req.body;
+
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      await session.abortTransaction();
+      return res.status(400).json({ error: 'Se requiere una lista válida de productos.' });
+    }
+
     let total = 0;
     for (const item of products) {
       const product = await Product.findById(item.productId).session(session);
-      if (!product || product.stock < item.quantity) {
+      if (!product) {
         await session.abortTransaction();
-        return res.status(400).json({ error: `No hay suficiente stock de ${item.name}` });
+        return res.status(404).json({ error: `Producto no encontrado: ${item.productId}` });
+      }
+      if (product.stock < item.quantity) {
+        await session.abortTransaction();
+        return res.status(400).json({ error: `Stock insuficiente para ${product.name}` });
       }
       product.stock -= item.quantity;
       await product.save({ session });
       total += item.price * item.quantity;
     }
 
-    // 2. Crear el pedido
     const order = new Order({
       products,
       total,
@@ -413,13 +466,13 @@ app.post('/orders', async (req, res) => {
     await order.save({ session });
 
     await session.commitTransaction();
-    session.endSession();
-
     res.status(201).json({ message: 'Pedido creado exitosamente', order });
   } catch (error) {
     await session.abortTransaction();
+    console.error('Error al crear pedido:', error);
+    res.status(500).json({ error: 'Error interno del servidor al crear el pedido.' });
+  } finally {
     session.endSession();
-    res.status(500).json({ error: 'Ocurrió un error inesperado. Por favor, intenta nuevamente más tarde.' });
   }
 });
 
@@ -545,6 +598,9 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
-server.listen(3001, () => {
-  console.log('Servidor escuchando en el puerto 3001');
+server.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+}).on('error', (error) => {
+  console.error('Error al iniciar el servidor:', error);
+  process.exit(1);
 });
