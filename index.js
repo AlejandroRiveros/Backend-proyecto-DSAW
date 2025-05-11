@@ -29,8 +29,12 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Inicialización de Firebase Admin
 try {
-  if (!process.env.FIREBASE_CREDENTIALS) {
-    throw new Error('FIREBASE_CREDENTIALS no está definido en las variables de entorno');
+  if (
+    !process.env.FIREBASE_PROJECT_ID ||
+    !process.env.FIREBASE_CLIENT_EMAIL ||
+    !process.env.FIREBASE_PRIVATE_KEY
+  ) {
+    throw new Error('⚠️ Variables de entorno de Firebase incompletas');
   }
 
   admin.initializeApp({
@@ -40,11 +44,14 @@ try {
       privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     }),
   });
-  
+
+  console.log('✅ Firebase Admin inicializado correctamente');
+
 } catch (error) {
-  console.error('Error al inicializar Firebase Admin:', error);
+  console.error('❌ Error al inicializar Firebase Admin:', error);
   process.exit(1);
 }
+
 
 const sendNotification = async (token, title, body) => {
   const message = {
