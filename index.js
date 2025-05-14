@@ -76,6 +76,39 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// ✅ MODELO de restaurante
+const restaurantSchema = new mongoose.Schema({
+  name: String,
+  horario: String,
+  description: String,
+  image: String,
+});
+
+const Restaurant = mongoose.model('Restaurant', restaurantSchema);
+
+// ✅ RUTA para crear restaurante
+app.post('/restaurants', async (req, res) => {
+  const { name, horario, description, image } = req.body;
+
+  try {
+    const newRestaurant = new Restaurant({ name, horario, description, image });
+    const saved = await newRestaurant.save();
+    res.status(201).json(saved);
+  } catch (error) {
+    console.error('Error al guardar restaurante:', error);
+    res.status(500).send('Error al guardar restaurante.');
+  }
+});
+
+// ✅ RUTA para obtener restaurantes
+app.get('/restaurants', async (req, res) => {
+  try {
+    const all = await Restaurant.find();
+    res.status(200).json(all);
+  } catch (error) {
+    res.status(500).send('Error al obtener restaurantes.');
+  }
+});
 // Configurar encabezados de caché para recursos estáticos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res) => {
@@ -207,23 +240,21 @@ app.post('/reset-password', async (req, res) => {
 // Rutas para la gestión de inventarios
 const inventoryCache = {};
 
-app.get('/inventory', async (req, res) => {
-  const cacheKey = 'inventory';
-
-  if (inventoryCache[cacheKey]) {
-    console.log('Datos obtenidos de la caché');
-    return res.json(inventoryCache[cacheKey]);
-  }
+// Ruta para agregar un producto con imagen (ya viene URL desde frontend)
+app.post('/inventory', async (req, res) => {
+  const { name, price, stock, category, restaurant, image } = req.body;
 
   try {
-    const products = await Product.find();
-    inventoryCache[cacheKey] = products;
-    res.json(products);
+    const newProduct = new Product({ name, price, stock, category, restaurant, image });
+    const savedProduct = await newProduct.save();
+    invalidateInventoryCache();
+    res.status(201).json(savedProduct);
   } catch (error) {
-    console.error('Error al obtener el inventario:', error);
-    res.status(500).json({ error: 'Error al obtener el inventario' });
+    console.error('Error al guardar el producto:', error);
+    res.status(500).send('Error al guardar el producto.');
   }
 });
+
 
 const invalidateInventoryCache = () => {
   delete inventoryCache['inventory'];
@@ -247,21 +278,6 @@ app.get('/inventory/:id', async (req, res) => {
   }
 });
 
-// Ruta para agregar un producto con imagen
-app.post('/inventory', upload.single('image'), async (req, res) => {
-  const { name, price, stock, category, restaurant } = req.body;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
-
-  try {
-    const newProduct = new Product({ name, price, stock, category, restaurant, image: imageUrl });
-    const savedProduct = await newProduct.save();
-    invalidateInventoryCache();
-    res.status(201).json(savedProduct);
-  } catch (error) {
-    console.error('Error al guardar el producto:', error);
-    res.status(500).send('Error al guardar el producto.');
-  }
-});
 
 app.put('/inventory/:id', async (req, res) => {
   const { id } = req.params;
