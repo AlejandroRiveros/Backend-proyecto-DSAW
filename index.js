@@ -109,6 +109,43 @@ app.get('/restaurants', async (req, res) => {
     res.status(500).send('Error al obtener restaurantes.');
   }
 });
+
+// 🔄 Obtener restaurante por ID
+app.get('/restaurants/:id', async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    res.status(200).json(restaurant);
+  } catch (error) {
+    res.status(500).send('Error al obtener restaurante.');
+  }
+});
+
+// ✏️ Editar restaurante
+app.put('/restaurants/:id', async (req, res) => {
+  const { name, horario, description, image } = req.body;
+
+  try {
+    const updated = await Restaurant.findByIdAndUpdate(
+      req.params.id,
+      { name, horario, description, image },
+      { new: true }
+    );
+    res.status(200).json(updated);
+  } catch (error) {
+    res.status(500).send('Error al editar restaurante.');
+  }
+});
+
+// 🗑️ Eliminar restaurante
+app.delete('/restaurants/:id', async (req, res) => {
+  try {
+    await Restaurant.findByIdAndDelete(req.params.id);
+    res.status(200).send('Restaurante eliminado');
+  } catch (error) {
+    res.status(500).send('Error al eliminar restaurante.');
+  }
+});
+
 // Configurar encabezados de caché para recursos estáticos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res) => {
