@@ -82,6 +82,7 @@ const restaurantSchema = new mongoose.Schema({
   horario: String,
   description: String,
   image: String,
+  menu: String,
 });
 
 const Restaurant = mongoose.model('Restaurant', restaurantSchema);
