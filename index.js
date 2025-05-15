@@ -90,6 +90,8 @@ const Restaurant = mongoose.model('Restaurant', restaurantSchema);
 app.post('/restaurants', async (req, res) => {
   const { name, horario, description, image } = req.body;
 
+  console.log("🧾 Recibido:", { name, horario, description, image });
+
   try {
     const newRestaurant = new Restaurant({ name, horario, description, image });
     const saved = await newRestaurant.save();
@@ -99,6 +101,7 @@ app.post('/restaurants', async (req, res) => {
     res.status(500).send('Error al guardar restaurante.');
   }
 });
+
 
 // ✅ RUTA para obtener restaurantes
 app.get('/restaurants', async (req, res) => {
