@@ -76,32 +76,56 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// ✅ MODELO de restaurante
 const restaurantSchema = new mongoose.Schema({
   name: String,
   horario: String,
   description: String,
   image: String,
   menu: String,
+  latitude: Number,
+  longitude: Number,
+  icon: String
 });
+
 
 const Restaurant = mongoose.model('Restaurant', restaurantSchema);
 
 // ✅ RUTA para crear restaurante
 app.post('/restaurants', async (req, res) => {
-  const { name, horario, description, image } = req.body;
-
-  console.log("🧾 Recibido:", { name, horario, description, image });
-
   try {
-    const newRestaurant = new Restaurant({ name, horario, description, image });
-    const saved = await newRestaurant.save();
-    res.status(201).json(saved);
-  } catch (error) {
-    console.error('Error al guardar restaurante:', error);
-    res.status(500).send('Error al guardar restaurante.');
+    const {
+      name,
+      horario,
+      description,
+      image,
+      menu,
+      latitude,
+      longitude,
+      icon
+    } = req.body;
+
+    console.log("📥 Restaurante recibido:", {
+      name, horario, description, image, menu, latitude, longitude, icon
+    });
+    const newRestaurant = new Restaurant({
+      name,
+      horario,
+      description,
+      image,
+      menu,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      icon
+    });
+
+    await newRestaurant.save();
+    res.status(201).json({ message: 'Restaurante guardado correctamente' });
+  } catch (err) {
+    console.error('❌ Error guardando restaurante:', err);
+    res.status(500).send('Error al guardar restaurante');
   }
 });
+
 
 
 // ✅ RUTA para obtener restaurantes
