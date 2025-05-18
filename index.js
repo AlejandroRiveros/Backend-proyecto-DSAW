@@ -17,7 +17,7 @@ const Order = require('./Order');
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173', // Permitir solicitudes desde el frontend
+    origin: 'https://frontend-dsaw.vercel.app/', // Permitir solicitudes desde el frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
   transports: ['websocket'], // Forzar el uso de WebSockets
@@ -310,10 +310,13 @@ app.post('/inventory', async (req, res) => {
   const { name, price, stock, category, restaurant, image } = req.body;
 
   try {
-    const newProduct = new Product({ name, price, stock, category, restaurant, image });
     const savedProduct = await newProduct.save();
-    invalidateInventoryCache();
-    res.status(201).json(savedProduct);
+invalidateInventoryCache();
+
+// 👇 EMITIR evento a clientes conectados
+io.emit('productCreated', savedProduct);
+
+res.status(201).json(savedProduct);
   } catch (error) {
     console.error('Error al guardar el producto:', error);
     res.status(500).send('Error al guardar el producto.');
@@ -364,15 +367,23 @@ app.put('/inventory/:id', async (req, res) => {
   }
 
   invalidateInventoryCache();
-  io.emit('product-updated', updatedProduct);
+  io.emit('productUpdated', {
+    id,
+    updatedProduct,
+  });
   res.status(200).send('Producto actualizado');
 });
 
 app.delete('/inventory/:id', async (req, res) => {
   const { id } = req.params;
   await Product.findByIdAndDelete(id);
-  invalidateInventoryCache();
-  res.send('Producto eliminado exitosamente.');
+invalidateInventoryCache();
+
+// 👇 EMITIR evento
+io.emit('productDeleted', id);
+
+res.send('Producto eliminado exitosamente.');
+
 });
 
 // Ruta protegida de ejemplo
@@ -572,6 +583,10 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
-server.listen(3001, () => {
-  console.log('Servidor escuchando en el puerto 3001');
+io.on('connection', (socket) => {
+  console.log('🟢 Cliente conectado por WebSocket');
+
+  socket.on('disconnect', () => {
+    console.log('🔴 Cliente desconectado');
+  });
 });
