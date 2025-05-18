@@ -59,7 +59,7 @@ const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
 const getUsersFile = (email) => {
   return email.endsWith('@unisabana.edu.co') ? './clientes.json' : './pos.json';
 };
-
+console.log('MONGODB_URI:', process.env.MONGODB_URI);
 // Conexión a MongoDB Atlas SIN opciones deprecadas
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
