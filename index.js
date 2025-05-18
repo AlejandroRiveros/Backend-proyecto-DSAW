@@ -11,7 +11,7 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
 const server = http.createServer(app);
@@ -596,4 +596,8 @@ app.post('/inventory/validate-stock', async (req, res) => {
     console.error('Error al validar el stock:', error);
     res.status(500).json({ error: 'Error interno del servidor al validar el stock.' });
   }
+});
+
+server.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
