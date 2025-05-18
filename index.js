@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
 // Configuración de CORS para Express
-const allowedOrigin = process.env.CORS_ORIGIN || 'https://frontend-dsaw.vercel.app';
+const allowedOrigin = process.env.CORS_ORIGIN || 'https://frontend-dsaw.vercel.app/';
 app.use(cors({
   origin: allowedOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
