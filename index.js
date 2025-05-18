@@ -61,7 +61,11 @@ const getUsersFile = (email) => {
 };
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 // Conexión a MongoDB Atlas SIN opciones deprecadas
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect('mongodb+srv://alejandrorivsob:Majo1811@alejo18.znsakxl.mongodb.net/InventoryDB?retryWrites=true&w=majority', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000, // Aumentar el tiempo de espera a 30 segundos
+})
   .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
   .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
 
