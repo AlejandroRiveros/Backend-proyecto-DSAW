@@ -20,7 +20,7 @@ const io = new Server(server, {
     origin: 'https://frontend-dsaw.vercel.app/', // Permitir solicitudes desde el frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
-  transports: ['websocket'], // Forzar el uso de WebSockets
+  transports: ['polling'], // Forzar el uso de WebSockets
 });
 
 io.on('connection', (socket) => {
@@ -34,7 +34,12 @@ io.on('connection', (socket) => {
 const resetTokens = {}; // Almacén temporal para tokens de restablecimiento
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: 'https://frontend-dsaw.vercel.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+}));
+
 
 const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
 
