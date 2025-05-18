@@ -16,8 +16,6 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
-const http = require('http');
-const { Server } = require('socket.io');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
@@ -34,38 +32,8 @@ app.options('*', cors());
 // Middleware para parsear JSON
 app.use(express.json());
 
-// Configuración de Socket.IO con CORS
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigin,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  },
-  transports: ['polling'], // Si Railway no soporta websockets, solo polling
-});
-
-io.on('connection', (socket) => {
-  console.log('Cliente conectado:', socket.id);
-  socket.on('disconnect', () => {
-    console.log('Cliente desconectado:', socket.id);
-  });
-});
-
-const resetTokens = {}; // Almacén temporal para tokens de restablecimiento
-
-const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
-
-const getUsersFile = (email) => {
-  return email.endsWith('@unisabana.edu.co') ? './clientes.json' : './pos.json';
-};
-console.log('MONGODB_URI:', process.env.MONGODB_URI);
-// Conexión a MongoDB Atlas SIN opciones deprecadas
-mongoose.connect('mongodb+srv://alejandrorivsob:Majo1811@alejo18.znsakxl.mongodb.net/InventoryDB?retryWrites=true&w=majority', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Aumentar el tiempo de espera a 30 segundos
-})
+// Conexión a MongoDB Atlas
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
   .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
 
@@ -340,8 +308,6 @@ app.post('/inventory', async (req, res) => {
     const savedProduct = await newProduct.save();
     invalidateInventoryCache();
 
-    io.emit('productCreated', savedProduct);
-
     res.status(201).json(savedProduct);
   } catch (error) {
     console.error('Error al guardar el producto:', error);
@@ -394,10 +360,6 @@ app.put('/inventory/:id', async (req, res) => {
   }
 
   invalidateInventoryCache();
-  io.emit('productUpdated', {
-    id,
-    updatedProduct,
-  });
   res.status(200).send('Producto actualizado');
 });
 
@@ -405,9 +367,6 @@ app.delete('/inventory/:id', async (req, res) => {
   const { id } = req.params;
   await Product.findByIdAndDelete(id);
 invalidateInventoryCache();
-
-// 👇 EMITIR evento
-io.emit('productDeleted', id);
 
 res.send('Producto eliminado exitosamente.');
 
@@ -555,7 +514,6 @@ app.put('/orders/:id', async (req, res) => {
     if (!order) {
       return res.status(404).json({ error: 'Pedido no encontrado' });
     }
-    // Aquí podrías emitir un evento con socket.io para notificar al cliente
     res.json(order);
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar el pedido' });
@@ -610,7 +568,7 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
-// Iniciar el servidor en 0.0.0.0
-server.listen(PORT, '0.0.0.0', () => {
+// Iniciar el servidor solo con Express
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
