@@ -14,9 +14,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
-// Configuración de CORS
+// Configuración de CORS para Express
+const allowedOrigin = process.env.CORS_ORIGIN || 'https://frontend-dsaw.vercel.app';
 app.use(cors({
-  origin: process.env.CORS_ORIGIN,
+  origin: allowedOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }));
@@ -25,19 +26,19 @@ app.options('*', cors());
 // Middleware para parsear JSON
 app.use(express.json());
 
-// Configuración de Socket.IO
+// Configuración de Socket.IO con CORS
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://frontend-dsaw.vercel.app',
+    origin: allowedOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
   },
-  transports: ['polling'],
+  transports: ['polling'], // Si Railway no soporta websockets, solo polling
 });
 
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
-
   socket.on('disconnect', () => {
     console.log('Cliente desconectado:', socket.id);
   });
@@ -601,7 +602,7 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
-// Iniciar el servidor
+// Iniciar el servidor en 0.0.0.0
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
