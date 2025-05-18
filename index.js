@@ -45,7 +45,7 @@ const productSchema = new mongoose.Schema({
   stock: Number,
   category: String,
   image: String,
-  restaurant: String,
+  restaurant: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant' },
 });
 
 const Product = mongoose.model('Product', productSchema);
@@ -411,47 +411,30 @@ app.get('/test-insert', async (req, res) => {
 // Implementar una caché en memoria para el endpoint /products
 const cache = {};
 
-// Actualizar el endpoint /products para manejar mejor los errores y devolver datos
+// Actualizar el endpoint /products para hacer populate del restaurante
 app.get('/products', async (req, res) => {
   const { name, category } = req.query;
   const cacheKey = `${name || ''}-${category || ''}`;
 
-  console.log('Recibida solicitud para /products con parámetros:', { name, category });
-
-  // Verificar si los datos están en la caché
   if (cache[cacheKey]) {
-    console.log('Datos obtenidos de la caché');
     return res.json(cache[cacheKey]);
   }
 
   try {
-    // Construir el filtro dinámico
     const filter = {};
-    if (name) {
-      filter.name = { $regex: name, $options: 'i' }; // Búsqueda insensible a mayúsculas
-    }
-    if (category) {
-      filter.category = category;
-    }
+    if (name) filter.name = { $regex: name, $options: 'i' };
+    if (category) filter.category = category;
 
-    console.log('Filtro construido:', filter);
-
-    // Consultar la base de datos con el filtro
-    const products = await Product.find(filter);
+    // Hacer populate del restaurante
+    const products = await Product.find(filter).populate('restaurant');
 
     if (!products || products.length === 0) {
-      console.log('No se encontraron productos');
       return res.status(404).json({ message: 'No se encontraron productos' });
     }
 
-    console.log('Productos obtenidos de la base de datos:', products);
-
-    // Almacenar los datos en la caché
     cache[cacheKey] = products;
-
     res.json(products);
   } catch (error) {
-    console.error('Error al filtrar productos:', error);
     res.status(500).json({ error: 'Error al filtrar productos' });
   }
 });
