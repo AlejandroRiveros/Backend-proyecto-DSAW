@@ -14,13 +14,25 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
+// Configuración de CORS
+app.use(cors({
+  origin: process.env.CORS_ORIGIN,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+}));
+app.options('*', cors());
+
+// Middleware para parsear JSON
+app.use(express.json());
+
+// Configuración de Socket.IO
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://frontend-dsaw.vercel.app', // Permitir solicitudes desde el frontend
+    origin: 'https://frontend-dsaw.vercel.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
-  transports: ['polling'], // Forzar el uso de WebSockets
+  transports: ['polling'],
 });
 
 io.on('connection', (socket) => {
@@ -32,15 +44,6 @@ io.on('connection', (socket) => {
 });
 
 const resetTokens = {}; // Almacén temporal para tokens de restablecimiento
-
-app.use(express.json());
-app.use(cors({
-  origin: 'https://frontend-dsaw.vercel.app',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
-}));
-app.options('*', cors()); // Maneja preflight de CORS
-
 
 const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
 
@@ -598,6 +601,7 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+// Iniciar el servidor
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
