@@ -17,7 +17,7 @@ const Order = require('./Order');
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://frontend-dsaw.vercel.app/', // Permitir solicitudes desde el frontend
+    origin: 'https://frontend-dsaw.vercel.app', // Permitir solicitudes desde el frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
   transports: ['polling'], // Forzar el uso de WebSockets
@@ -39,6 +39,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }));
+app.options('*', cors()); // Maneja preflight de CORS
 
 
 const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
