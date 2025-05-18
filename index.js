@@ -1,3 +1,11 @@
+// Manejo global de errores para evitar que el proceso termine silenciosamente
+process.on('uncaughtException', err => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', err => {
+  console.error('Unhandled Rejection:', err);
+});
+
 require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
@@ -52,12 +60,8 @@ const getUsersFile = (email) => {
   return email.endsWith('@unisabana.edu.co') ? './clientes.json' : './pos.json';
 };
 
-// Conexión a MongoDB Atlas
-mongoose.connect('mongodb+srv://alejandrorivsob:tS6OnQ6IMl1J4xt9@alejo18.znsakxl.mongodb.net/InventoryDB?retryWrites=true&w=majority', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Aumentar el tiempo de espera a 30 segundos
-})
+// Conexión a MongoDB Atlas SIN opciones deprecadas
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
   .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
 
