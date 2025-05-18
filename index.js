@@ -597,11 +597,3 @@ app.post('/inventory/validate-stock', async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor al validar el stock.' });
   }
 });
-
-io.on('connection', (socket) => {
-  console.log('🟢 Cliente conectado por WebSocket');
-
-  socket.on('disconnect', () => {
-    console.log('🔴 Cliente desconectado');
-  });
-});
