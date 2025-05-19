@@ -77,15 +77,16 @@ const upload = multer({ storage });
 const restaurantSchema = new mongoose.Schema({
   name: String,
   horario: String,
-  description: String,
   image: String,
+  icon: String,
+  menu: String
 });
 const Restaurant = mongoose.model('Restaurant', restaurantSchema);
 
 app.post('/restaurants', async (req, res) => {
-  const { name, horario, description, image } = req.body;
+  const { name, horario, image, icon, menu } = req.body;
   try {
-    const newRestaurant = new Restaurant({ name, horario, description, image });
+    const newRestaurant = new Restaurant({ name, horario, image, icon, menu });
     const saved = await newRestaurant.save();
     res.status(201).json(saved);
   } catch (error) {
