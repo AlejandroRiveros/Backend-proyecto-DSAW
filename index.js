@@ -10,7 +10,7 @@ const multer = require('multer');
 const path = require('path');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
 // Configuración de CORS
@@ -510,5 +510,5 @@ app.post('/products', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log('Servidor escuchando en el puerto 3001');
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
