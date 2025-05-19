@@ -314,6 +314,7 @@ app.delete('/inventory/:id', async (req, res) => {
   const { id } = req.params;
   await Product.findByIdAndDelete(id);
   invalidateInventoryCache();
+  invalidateProductCache(); // <-- Limpiar también la caché de /products
   res.send('Producto eliminado exitosamente.');
 });
 
@@ -524,13 +525,16 @@ app.post('/inventory/validate-stock', async (req, res) => {
 
 // Ruta para agregar un producto (POST /products)
 app.post('/products', async (req, res) => {
+  console.log('POST /products llamado');
+  console.log('Body recibido:', req.body);
   const { name, price, stock, category, restaurant, image } = req.body;
   try {
     const newProduct = new Product({ name, price, stock, category, restaurant, image });
     const savedProduct = await newProduct.save();
+    console.log('Producto guardado en MongoDB:', savedProduct);
     res.status(201).json(savedProduct);
   } catch (error) {
-    console.error('Error al guardar el producto:', error);
+    console.error('Error al guardar el producto en /products:', error);
     res.status(500).send('Error al guardar el producto.');
   }
 });
