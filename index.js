@@ -337,6 +337,7 @@ app.get('/', (req, res) => {
   res.send('Servidor backend funcionando correctamente');
 });
 
+// --- Solo una llamada a app.listen ---
 console.log('Preparando para iniciar el servidor...');
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
@@ -532,8 +533,4 @@ app.post('/products', async (req, res) => {
     console.error('Error al guardar el producto:', error);
     res.status(500).send('Error al guardar el producto.');
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
