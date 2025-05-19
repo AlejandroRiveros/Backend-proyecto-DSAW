@@ -23,7 +23,7 @@ const Order = require('./Order');
 
 // --- Asegurar CORS como primer middleware ---
 app.use(cors({
-  origin: ['https://frontend-proyecto-dsaw.vercel.app'],
+  origin: ['https://frontend-dsaw.vercel.app/', 'https://frontend-proyecto-dsaw.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
@@ -31,7 +31,7 @@ app.options('*', cors()); // Preflight para todas las rutas
 
 // --- Siempre aplicar CORS en respuestas de error y rutas no encontradas ---
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://frontend-proyecto-dsaw.vercel.app');
+  res.header('Access-Control-Allow-Origin', 'https://frontend-proyecto-dsaw.vercel.app', 'https://frontend-dsaw.vercel.app');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
