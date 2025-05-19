@@ -494,6 +494,19 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
+// Ruta para agregar un producto (POST /products)
+app.post('/products', async (req, res) => {
+  const { name, price, stock, category, restaurant, image } = req.body;
+  try {
+    const newProduct = new Product({ name, price, stock, category, restaurant, image });
+    const savedProduct = await newProduct.save();
+    res.status(201).json(savedProduct);
+  } catch (error) {
+    console.error('Error al guardar el producto:', error);
+    res.status(500).send('Error al guardar el producto.');
+  }
+});
+
 app.listen(PORT, () => {
   console.log('Servidor escuchando en el puerto 3001');
 });
