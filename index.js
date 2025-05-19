@@ -339,7 +339,7 @@ app.get('/', (req, res) => {
 
 // --- Solo una llamada a app.listen ---
 console.log('Preparando para iniciar el servidor...');
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
 console.log('app.listen() fue llamado, el proceso sigue vivo.');
