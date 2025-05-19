@@ -1,11 +1,3 @@
-// Manejo global de errores para evitar que el proceso termine silenciosamente
-process.on('uncaughtException', err => {
-  console.error('Uncaught Exception:', err);
-});
-process.on('unhandledRejection', err => {
-  console.error('Unhandled Rejection:', err);
-});
-
 require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
@@ -16,30 +8,35 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
-// Configuración de CORS para Express
-const allowedOrigin = process.env.CORS_ORIGIN || 'https://frontend-dsaw.vercel.app';
+// Configuración de CORS
 app.use(cors({
-  origin: allowedOrigin,
+  origin: ['http://localhost:5173', 'https://frontend-proyecto-dsaw.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
+  credentials: true
 }));
-app.options('*', cors());
 
-// Middleware para parsear JSON
 app.use(express.json());
 
-// Conexión a MongoDB Atlas
-mongoose.connect('mongodb+srv://alejandrorivsob:Majo1811@alejo18.znsakxl.mongodb.net/InventoryDB?retryWrites=true&w=majority', {
+const resetTokens = {}; // Almacén temporal para tokens de restablecimiento
+
+const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
+
+const getUsersFile = (email) => {
+  return email.endsWith('@unisabana.edu.co') ? './clientes.json' : './pos.json';
+};
+
+// Configuración de MongoDB
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://alejandro:alejandro123@cluster0.mongodb.net/restaurantes', {
   useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Aumentar el tiempo de espera a 30 segundos
+  useUnifiedTopology: true
 })
-  .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
-  .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
+.then(() => console.log('Conectado a MongoDB'))
+.catch(err => console.error('Error conectando a MongoDB:', err));
 
 mongoose.set('strictQuery', false); // Desactivar strictQuery para evitar problemas con consultas
 
@@ -49,7 +46,7 @@ const productSchema = new mongoose.Schema({
   stock: Number,
   category: String,
   image: String,
-  restaurant: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant' },
+  restaurant: String,
 });
 
 const Product = mongoose.model('Product', productSchema);
@@ -66,101 +63,43 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// ✅ MODELO de restaurante
 const restaurantSchema = new mongoose.Schema({
   name: String,
   horario: String,
   description: String,
   image: String,
-  menu: String,
-  latitude: Number,
-  longitude: Number,
-  icon: String
 });
-
 
 const Restaurant = mongoose.model('Restaurant', restaurantSchema);
 
 // ✅ RUTA para crear restaurante
 app.post('/restaurants', async (req, res) => {
+  const { name, horario, description, image } = req.body;
+
   try {
-    const {
-      name,
-      horario,
-      description,
-      image,
-      menu,
-      latitude,
-      longitude,
-      icon
-    } = req.body;
-
-    console.log("📥 Restaurante recibido:", {
-      name, horario, description, image, menu, latitude, longitude, icon
-    });
-    const newRestaurant = new Restaurant({
-      name,
-      horario,
-      description,
-      image,
-      menu,
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
-      icon
-    });
-
-    await newRestaurant.save();
-    res.status(201).json({ message: 'Restaurante guardado correctamente' });
-  } catch (err) {
-    console.error('❌ Error guardando restaurante:', err);
-    res.status(500).send('Error al guardar restaurante');
+    const newRestaurant = new Restaurant({ name, horario, description, image });
+    const saved = await newRestaurant.save();
+    res.status(201).json(saved);
+  } catch (error) {
+    console.error('Error al guardar restaurante:', error);
+    res.status(500).send('Error al guardar restaurante.');
   }
 });
-
-
 
 // ✅ RUTA para obtener restaurantes
 app.get('/restaurants', async (req, res) => {
   try {
+    console.log('Intentando obtener restaurantes...');
     const all = await Restaurant.find();
+    console.log('Restaurantes encontrados:', all);
     res.status(200).json(all);
   } catch (error) {
-    res.status(500).send('Error al obtener restaurantes.');
-  }
-});
-
-// 🔄 Obtener restaurante por ID
-app.get('/restaurants/:id', async (req, res) => {
-  try {
-    const restaurant = await Restaurant.findById(req.params.id);
-    res.status(200).json(restaurant);
-  } catch (error) {
-    res.status(500).send('Error al obtener restaurante.');
-  }
-});
-
-// ✏️ Editar restaurante
-app.put('/restaurants/:id', async (req, res) => {
-  const { name, horario, description, image } = req.body;
-
-  try {
-    const updated = await Restaurant.findByIdAndUpdate(
-      req.params.id,
-      { name, horario, description, image },
-      { new: true }
-    );
-    res.status(200).json(updated);
-  } catch (error) {
-    res.status(500).send('Error al editar restaurante.');
-  }
-});
-
-// 🗑️ Eliminar restaurante
-app.delete('/restaurants/:id', async (req, res) => {
-  try {
-    await Restaurant.findByIdAndDelete(req.params.id);
-    res.status(200).send('Restaurante eliminado');
-  } catch (error) {
-    res.status(500).send('Error al eliminar restaurante.');
+    console.error('Error detallado al obtener restaurantes:', error);
+    res.status(500).json({
+      error: 'Error al obtener restaurantes',
+      details: error.message
+    });
   }
 });
 
@@ -300,25 +239,15 @@ app.post('/inventory', async (req, res) => {
   const { name, price, stock, category, restaurant, image } = req.body;
 
   try {
-    const newProduct = new Product({
-      name,
-      price: parseFloat(price),
-      stock: parseInt(stock),
-      category,
-      restaurant,
-      image
-    });
-
+    const newProduct = new Product({ name, price, stock, category, restaurant, image });
     const savedProduct = await newProduct.save();
     invalidateInventoryCache();
-
     res.status(201).json(savedProduct);
   } catch (error) {
     console.error('Error al guardar el producto:', error);
     res.status(500).send('Error al guardar el producto.');
   }
 });
-
 
 
 const invalidateInventoryCache = () => {
@@ -370,10 +299,8 @@ app.put('/inventory/:id', async (req, res) => {
 app.delete('/inventory/:id', async (req, res) => {
   const { id } = req.params;
   await Product.findByIdAndDelete(id);
-invalidateInventoryCache();
-
-res.send('Producto eliminado exitosamente.');
-
+  invalidateInventoryCache();
+  res.send('Producto eliminado exitosamente.');
 });
 
 // Ruta protegida de ejemplo
@@ -415,30 +342,47 @@ app.get('/test-insert', async (req, res) => {
 // Implementar una caché en memoria para el endpoint /products
 const cache = {};
 
-// Actualizar el endpoint /products para hacer populate del restaurante
+// Actualizar el endpoint /products para manejar mejor los errores y devolver datos
 app.get('/products', async (req, res) => {
   const { name, category } = req.query;
   const cacheKey = `${name || ''}-${category || ''}`;
 
+  console.log('Recibida solicitud para /products con parámetros:', { name, category });
+
+  // Verificar si los datos están en la caché
   if (cache[cacheKey]) {
+    console.log('Datos obtenidos de la caché');
     return res.json(cache[cacheKey]);
   }
 
   try {
+    // Construir el filtro dinámico
     const filter = {};
-    if (name) filter.name = { $regex: name, $options: 'i' };
-    if (category) filter.category = category;
+    if (name) {
+      filter.name = { $regex: name, $options: 'i' }; // Búsqueda insensible a mayúsculas
+    }
+    if (category) {
+      filter.category = category;
+    }
 
-    // Hacer populate del restaurante
-    const products = await Product.find(filter).populate('restaurant');
+    console.log('Filtro construido:', filter);
+
+    // Consultar la base de datos con el filtro
+    const products = await Product.find(filter);
 
     if (!products || products.length === 0) {
+      console.log('No se encontraron productos');
       return res.status(404).json({ message: 'No se encontraron productos' });
     }
 
+    console.log('Productos obtenidos de la base de datos:', products);
+
+    // Almacenar los datos en la caché
     cache[cacheKey] = products;
+
     res.json(products);
   } catch (error) {
+    console.error('Error al filtrar productos:', error);
     res.status(500).json({ error: 'Error al filtrar productos' });
   }
 });
@@ -501,6 +445,7 @@ app.put('/orders/:id', async (req, res) => {
     if (!order) {
       return res.status(404).json({ error: 'Pedido no encontrado' });
     }
+    // Aquí podrías emitir un evento con socket.io para notificar al cliente
     res.json(order);
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar el pedido' });
@@ -555,7 +500,6 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
-// Iniciar el servidor solo con Express
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
