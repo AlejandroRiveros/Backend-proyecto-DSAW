@@ -333,8 +333,15 @@ app.get('/pos', verifyToken, verifyRole('POS'), (req, res) => {
 });
 
 app.get('/', (req, res) => {
+  console.log('Petición recibida en / (root endpoint)');
   res.send('Servidor backend funcionando correctamente');
 });
+
+console.log('Preparando para iniciar el servidor...');
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+});
+console.log('app.listen() fue llamado, el proceso sigue vivo.');
 
 // Script de prueba para insertar un producto en MongoDB
 app.get('/test-insert', async (req, res) => {
