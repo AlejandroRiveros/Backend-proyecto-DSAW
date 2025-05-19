@@ -1,4 +1,3 @@
-// Manejo global de errores para evitar que el proceso termine silenciosamente
 process.on('uncaughtException', err => {
   console.error('Uncaught Exception:', err);
 });
@@ -21,14 +20,12 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
-// --- Asegurar CORS como primer middleware ---
 const allowedOrigins = [
   'https://frontend-dsaw.vercel.app',
   'https://frontend-proyecto-dsaw.vercel.app'
 ];
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir peticiones sin origin (como Postman) o si el origin está en la lista
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -38,28 +35,24 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
-app.options('*', cors()); // Preflight para todas las rutas
-
+app.options('*', cors());
 app.use(express.json());
 
-const resetTokens = {}; // Almacén temporal para tokens de restablecimiento
-
+const resetTokens = {};
 const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
-
 const getUsersFile = (email) => {
   return email.endsWith('@unisabana.edu.co') ? './clientes.json' : './pos.json';
 };
 
-// Conexión a MongoDB Atlas
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Aumentar el tiempo de espera a 30 segundos
+  serverSelectionTimeoutMS: 30000,
 })
   .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
   .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
 
-mongoose.set('strictQuery', false); // Desactivar strictQuery para evitar problemas con consultas
+mongoose.set('strictQuery', false);
 
 const productSchema = new mongoose.Schema({
   name: String,
@@ -69,35 +62,28 @@ const productSchema = new mongoose.Schema({
   image: String,
   restaurant: String,
 });
-
 const Product = mongoose.model('Product', productSchema);
 
-// Configuración de multer para guardar imágenes
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Carpeta donde se guardarán las imágenes
+    cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
-
 const upload = multer({ storage });
 
-// ✅ MODELO de restaurante
 const restaurantSchema = new mongoose.Schema({
   name: String,
   horario: String,
   description: String,
   image: String,
 });
-
 const Restaurant = mongoose.model('Restaurant', restaurantSchema);
 
-// ✅ RUTA para crear restaurante
 app.post('/restaurants', async (req, res) => {
   const { name, horario, description, image } = req.body;
-
   try {
     const newRestaurant = new Restaurant({ name, horario, description, image });
     const saved = await newRestaurant.save();
@@ -108,7 +94,6 @@ app.post('/restaurants', async (req, res) => {
   }
 });
 
-// ✅ RUTA para obtener restaurantes
 app.get('/restaurants', async (req, res) => {
   try {
     const all = await Restaurant.find();
@@ -117,14 +102,12 @@ app.get('/restaurants', async (req, res) => {
     res.status(500).send('Error al obtener restaurantes.');
   }
 });
-// Configurar encabezados de caché para recursos estáticos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 año
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
   },
 }));
 
-// Middleware para verificar JWT
 function verifyToken(req, res, next) {
   const token = req.headers['authorization'];
   if (!token) return res.status(403).send('Token no proporcionado.');
@@ -136,7 +119,6 @@ function verifyToken(req, res, next) {
   });
 }
 
-// Middleware para verificar roles
 function verifyRole(role) {
   return (req, res, next) => {
     if (req.user.role !== role) {
@@ -146,7 +128,6 @@ function verifyRole(role) {
   };
 }
 
-// Ruta para registrar usuarios
 app.post('/register', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).send('Faltan datos.');
@@ -166,12 +147,11 @@ app.post('/register', async (req, res) => {
   }
 
   users.push({ email, password: hashedPassword });
-  fs.writeFileSync(filePath, JSON.stringify(users, null, 2)); // Formato legible con 2 espacios
+  fs.writeFileSync(filePath, JSON.stringify(users, null, 2));
 
   res.status(201).send('Usuario registrado exitosamente.');
 });
 
-// Ruta para iniciar sesión
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).send('Faltan datos.');
@@ -199,7 +179,6 @@ app.post('/login', async (req, res) => {
   res.json({ token });
 });
 
-// Ruta para solicitar restablecimiento de contraseña
 app.post('/forgot-password', (req, res) => {
   const { email } = req.body;
   if (!allowedDomains.some(domain => email.endsWith(`@${domain}`))) {
@@ -214,13 +193,12 @@ app.post('/forgot-password', (req, res) => {
   }
 
   const token = crypto.randomBytes(32).toString('hex');
-  resetTokens[token] = email; // Asociar el token al correo
+  resetTokens[token] = email;
 
   console.log(`Enlace de restablecimiento: http://localhost:3000/reset-password?token=${token}`);
   res.send('Se ha enviado un enlace para restablecer la contraseña a su correo.');
 });
 
-// Ruta para restablecer la contraseña
 app.post('/reset-password', async (req, res) => {
   const { token, password } = req.body;
 
@@ -229,7 +207,7 @@ app.post('/reset-password', async (req, res) => {
   }
 
   const email = resetTokens[token];
-  delete resetTokens[token]; // Eliminar el token después de usarlo
+  delete resetTokens[token];
 
   const users = JSON.parse(fs.readFileSync(getUsersFile(email), 'utf-8'));
   const userIndex = users.findIndex(user => user.email === email);
@@ -245,10 +223,7 @@ app.post('/reset-password', async (req, res) => {
   res.send('Contraseña restablecida exitosamente.');
 });
 
-// Rutas para la gestión de inventarios
 const inventoryCache = {};
-
-// Ruta para agregar un producto con imagen (ya viene URL desde frontend)
 app.post('/inventory', async (req, res) => {
   const { name, price, stock, category, restaurant, image } = req.body;
 
@@ -268,7 +243,6 @@ const invalidateInventoryCache = () => {
   delete inventoryCache['inventory'];
 };
 
-// Ruta para obtener un producto específico por ID
 app.get('/inventory/:id', async (req, res) => {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -299,7 +273,7 @@ app.put('/inventory/:id', async (req, res) => {
   const updatedProduct = await Product.findByIdAndUpdate(
     id,
     { name, price: parsedPrice, stock: parsedStock, category },
-    { new: true } // Esto asegura que se devuelva el producto actualizado
+    { new: true }
   );
 
   if (!updatedProduct) {
@@ -314,21 +288,18 @@ app.delete('/inventory/:id', async (req, res) => {
   const { id } = req.params;
   await Product.findByIdAndDelete(id);
   invalidateInventoryCache();
-  invalidateProductCache(); // <-- Limpiar también la caché de /products
+  invalidateProductCache();
   res.send('Producto eliminado exitosamente.');
 });
 
-// Ruta protegida de ejemplo
 app.get('/protected', verifyToken, (req, res) => {
   res.send(`Hola ${req.user.username}, tienes acceso a esta ruta protegida.`);
 });
 
-// Ruta protegida para Clientes
 app.get('/cliente', verifyToken, verifyRole('Cliente'), (req, res) => {
   res.send('Bienvenido, Cliente. Tienes acceso a esta ruta.');
 });
 
-// Ruta protegida para POS
 app.get('/pos', verifyToken, verifyRole('POS'), (req, res) => {
   res.send('Bienvenido, POS. Tienes acceso a esta ruta.');
 });
@@ -338,14 +309,12 @@ app.get('/', (req, res) => {
   res.send('Servidor backend funcionando correctamente');
 });
 
-// --- Solo una llamada a app.listen ---
 console.log('Preparando para iniciar el servidor...');
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
 console.log('app.listen() fue llamado, el proceso sigue vivo.');
 
-// Script de prueba para insertar un producto en MongoDB
 app.get('/test-insert', async (req, res) => {
   try {
     const testProduct = new Product({
@@ -362,27 +331,23 @@ app.get('/test-insert', async (req, res) => {
   }
 });
 
-// Implementar una caché en memoria para el endpoint /products
 const cache = {};
 
-// Actualizar el endpoint /products para manejar mejor los errores y devolver datos
 app.get('/products', async (req, res) => {
   const { name, category } = req.query;
   const cacheKey = `${name || ''}-${category || ''}`;
 
   console.log('Recibida solicitud para /products con parámetros:', { name, category });
 
-  // Verificar si los datos están en la caché
   if (cache[cacheKey]) {
     console.log('Datos obtenidos de la caché');
     return res.json(cache[cacheKey]);
   }
 
   try {
-    // Construir el filtro dinámico
     const filter = {};
     if (name) {
-      filter.name = { $regex: name, $options: 'i' }; // Búsqueda insensible a mayúsculas
+      filter.name = { $regex: name, $options: 'i' };
     }
     if (category) {
       filter.category = category;
@@ -390,7 +355,6 @@ app.get('/products', async (req, res) => {
 
     console.log('Filtro construido:', filter);
 
-    // Consultar la base de datos con el filtro
     const products = await Product.find(filter);
 
     if (!products || products.length === 0) {
@@ -400,7 +364,6 @@ app.get('/products', async (req, res) => {
 
     console.log('Productos obtenidos de la base de datos:', products);
 
-    // Almacenar los datos en la caché
     cache[cacheKey] = products;
 
     res.json(products);
@@ -410,72 +373,6 @@ app.get('/products', async (req, res) => {
   }
 });
 
-// Ruta para crear un pedido y actualizar stock
-app.post('/orders', async (req, res) => {
-  const { products } = req.body;
-
-  // 1. Verificar disponibilidad y actualizar stock
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    let total = 0;
-    for (const item of products) {
-      const product = await Product.findById(item.productId).session(session);
-      if (!product || product.stock < item.quantity) {
-        await session.abortTransaction();
-        return res.status(400).json({ error: `No hay suficiente stock de ${item.name}` });
-      }
-      product.stock -= item.quantity;
-      await product.save({ session });
-      total += item.price * item.quantity;
-    }
-
-    // 2. Crear el pedido
-    const order = new Order({
-      products,
-      total,
-      status: 'pendiente'
-    });
-    await order.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(201).json({ message: 'Pedido creado exitosamente', order });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    res.status(500).json({ error: 'Error al crear el pedido' });
-  }
-});
-
-// Obtener todos los pedidos
-app.get('/orders', async (req, res) => {
-  try {
-    const orders = await Order.find().sort({ createdAt: -1 });
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener los pedidos' });
-  }
-});
-
-// Actualizar el estado de un pedido
-app.put('/orders/:id', async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  try {
-    const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
-    if (!order) {
-      return res.status(404).json({ error: 'Pedido no encontrado' });
-    }
-    // Aquí podrías emitir un evento con socket.io para notificar al cliente
-    res.json(order);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al actualizar el pedido' });
-  }
-});
-
-// --- Invalidar caché después de cambios en productos ---
 const invalidateProductCache = () => {
   Object.keys(cache).forEach(key => delete cache[key]);
 };
@@ -523,7 +420,6 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
-// Ruta para agregar un producto (POST /products)
 app.post('/products', async (req, res) => {
   console.log('POST /products llamado');
   console.log('Body recibido:', req.body);
