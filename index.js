@@ -292,6 +292,20 @@ app.delete('/inventory/:id', async (req, res) => {
   res.send('Producto eliminado exitosamente.');
 });
 
+app.delete('/restaurants/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Restaurant.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).send('Restaurante no encontrado');
+    }
+    res.send('Restaurante eliminado exitosamente');
+  } catch (error) {
+    console.error('Error al eliminar restaurante:', error);
+    res.status(500).send('Error al eliminar restaurante');
+  }
+});
+
 app.get('/protected', verifyToken, (req, res) => {
   res.send(`Hola ${req.user.username}, tienes acceso a esta ruta protegida.`);
 });
