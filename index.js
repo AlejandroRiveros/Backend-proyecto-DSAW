@@ -10,19 +10,23 @@ const multer = require('multer');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = 3001;
 const Order = require('./Order');
 
-// Configuración de CORS
-app.use(cors({
-  origin: ['http://localhost:5173', 'https://frontend-proyecto-dsaw.vercel.app'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
-}));
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:5173', // Permitir solicitudes desde el frontend
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  },
+  transports: ['websocket'], // Forzar el uso de WebSockets
+});
 
-app.use(express.json());
 
 const resetTokens = {}; // Almacén temporal para tokens de restablecimiento
+
+app.use(express.json());
+app.use(cors());
 
 const allowedDomains = ['unisabana.edu.co', 'possabana.com'];
 
@@ -36,8 +40,8 @@ mongoose.connect('mongodb+srv://alejandrorivsob:tS6OnQ6IMl1J4xt9@alejo18.znsakxl
   useUnifiedTopology: true,
   serverSelectionTimeoutMS: 30000, // Aumentar el tiempo de espera a 30 segundos
 })
-.then(() => console.log('Conectado a MongoDB'))
-.catch(err => console.error('Error conectando a MongoDB:', err));
+  .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
+  .catch((error) => console.error('Error al conectar a MongoDB Atlas:', error));
 
 mongoose.set('strictQuery', false); // Desactivar strictQuery para evitar problemas con consultas
 
@@ -91,19 +95,12 @@ app.post('/restaurants', async (req, res) => {
 // ✅ RUTA para obtener restaurantes
 app.get('/restaurants', async (req, res) => {
   try {
-    console.log('Intentando obtener restaurantes...');
     const all = await Restaurant.find();
-    console.log('Restaurantes encontrados:', all);
     res.status(200).json(all);
   } catch (error) {
-    console.error('Error detallado al obtener restaurantes:', error);
-    res.status(500).json({
-      error: 'Error al obtener restaurantes',
-      details: error.message
-    });
+    res.status(500).send('Error al obtener restaurantes.');
   }
 });
-
 // Configurar encabezados de caché para recursos estáticos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res) => {
@@ -294,6 +291,7 @@ app.put('/inventory/:id', async (req, res) => {
   }
 
   invalidateInventoryCache();
+  io.emit('product-updated', updatedProduct);
   res.status(200).send('Producto actualizado');
 });
 
@@ -501,6 +499,6 @@ app.post('/inventory/validate-stock', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
+server.listen(3001, () => {
+  console.log('Servidor escuchando en el puerto 3001');
 });
