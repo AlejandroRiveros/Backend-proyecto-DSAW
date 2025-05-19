@@ -20,6 +20,8 @@ app.use(cors({
   credentials: true
 }));
 
+app.options('*', cors()); // Maneja preflight de CORS para todas las rutas
+
 app.use(express.json());
 
 const resetTokens = {}; // Almacén temporal para tokens de restablecimiento
