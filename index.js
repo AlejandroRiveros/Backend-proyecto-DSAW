@@ -22,24 +22,23 @@ const PORT = process.env.PORT || 3001;
 const Order = require('./Order');
 
 // --- Asegurar CORS como primer middleware ---
+const allowedOrigins = [
+  'https://frontend-dsaw.vercel.app',
+  'https://frontend-proyecto-dsaw.vercel.app'
+];
 app.use(cors({
-  origin: ['https://frontend-dsaw.vercel.app/', 'https://frontend-proyecto-dsaw.vercel.app'],
+  origin: function (origin, callback) {
+    // Permitir peticiones sin origin (como Postman) o si el origin está en la lista
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
 app.options('*', cors()); // Preflight para todas las rutas
-
-// --- Siempre aplicar CORS en respuestas de error y rutas no encontradas ---
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://frontend-proyecto-dsaw.vercel.app', 'https://frontend-dsaw.vercel.app');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
 
 app.use(express.json());
 
